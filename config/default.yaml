@@ -1,0 +1,29 @@
+logger:
+  production: true
+
+server:
+  name: "go-product"
+  production: true
+  adminAddr: ":4040"
+  shutdownTimeout: 15s
+
+restful_api:
+  production: true
+  addr: ":5050"
+  corsAllowOrigins: []
+
+# PostgreSQL connection configuration (required runtime dependency).
+# Environment overrides: POSTGRES__URL (required), POSTGRES__MAX_CONNS, POSTGRES__MIN_CONNS,
+# POSTGRES__MAX_CONN_LIFETIME, POSTGRES__MAX_CONN_IDLE_TIME, POSTGRES__HEALTH_CHECK_PERIOD,
+# POSTGRES__CONNECT_TIMEOUT.
+postgres:
+  url: ""
+
+# Redis configuration (optional runtime dependency, disabled by default).
+# Environment overrides: REDIS__ENABLED, REDIS__CONFIG__ADDR,
+# REDIS__CONFIG__PASSWORD, REDIS__CONFIG__USERNAME, REDIS__CONFIG__DB.
+redis:
+  enabled: false
+  config:
+    addr: "127.0.0.1:6379"
+    password: ""
