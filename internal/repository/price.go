@@ -14,7 +14,7 @@ import (
 
 func (r *Repository) UpsertPrice(ctx context.Context, tx pgx.Tx, p *domain.Price) error {
 	q := `
-		INSERT INTO prices (id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at)
+		INSERT INTO product.prices (id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (offer_id, currency) DO UPDATE
 		SET amount = EXCLUDED.amount,
@@ -39,7 +39,7 @@ func (r *Repository) UpsertPrice(ctx context.Context, tx pgx.Tx, p *domain.Price
 
 func (r *Repository) UpdatePrice(ctx context.Context, tx pgx.Tx, p *domain.Price) error {
 	q := `
-		UPDATE prices
+		UPDATE product.prices
 		SET amount = $1, status = $2, updated_at = $3
 		WHERE id = $4;
 	`
@@ -56,7 +56,7 @@ func (r *Repository) UpdatePrice(ctx context.Context, tx pgx.Tx, p *domain.Price
 
 func (r *Repository) UpdatePriceStatus(ctx context.Context, tx pgx.Tx, id uuid.UUID, status domain.PriceStatus) error {
 	q := `
-		UPDATE prices
+		UPDATE product.prices
 		SET status = $1, updated_at = $2
 		WHERE id = $3;
 	`
@@ -73,7 +73,7 @@ func (r *Repository) UpdatePriceStatus(ctx context.Context, tx pgx.Tx, id uuid.U
 
 func (r *Repository) UpdatePriceReadModel(ctx context.Context, tx pgx.Tx, priceID uuid.UUID, catalogVisible bool, catalogData []byte) error {
 	q := `
-		UPDATE prices
+		UPDATE product.prices
 		SET catalog_visible = $1, catalog_data = $2, updated_at = now()
 		WHERE id = $3;
 	`
@@ -91,7 +91,7 @@ func (r *Repository) UpdatePriceReadModel(ctx context.Context, tx pgx.Tx, priceI
 func (r *Repository) GetPriceByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.Price, error) {
 	q := `
 		SELECT id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at
-		FROM prices
+		FROM product.prices
 		WHERE id = $1;
 	`
 	exec := r.getExecutor(tx)
@@ -112,7 +112,7 @@ func (r *Repository) GetPriceByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) 
 func (r *Repository) GetPriceByOfferAndCurrency(ctx context.Context, tx pgx.Tx, offerID uuid.UUID, currency string) (*domain.Price, error) {
 	q := `
 		SELECT id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at
-		FROM prices
+		FROM product.prices
 		WHERE offer_id = $1 AND currency = $2;
 	`
 	exec := r.getExecutor(tx)
@@ -133,7 +133,7 @@ func (r *Repository) GetPriceByOfferAndCurrency(ctx context.Context, tx pgx.Tx, 
 func (r *Repository) ListPricesByOfferID(ctx context.Context, tx pgx.Tx, offerID uuid.UUID) ([]domain.Price, error) {
 	q := `
 		SELECT id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at
-		FROM prices
+		FROM product.prices
 		WHERE offer_id = $1
 		ORDER BY currency ASC;
 	`
@@ -161,7 +161,7 @@ func (r *Repository) ListPricesByOfferID(ctx context.Context, tx pgx.Tx, offerID
 func (r *Repository) ListPricesByPlanID(ctx context.Context, tx pgx.Tx, planID uuid.UUID) ([]domain.Price, error) {
 	q := `
 		SELECT id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at
-		FROM prices
+		FROM product.prices
 		WHERE plan_id = $1
 		ORDER BY currency ASC;
 	`
@@ -189,7 +189,7 @@ func (r *Repository) ListPricesByPlanID(ctx context.Context, tx pgx.Tx, planID u
 func (r *Repository) ListPricesByProductID(ctx context.Context, tx pgx.Tx, productID uuid.UUID) ([]domain.Price, error) {
 	q := `
 		SELECT id, offer_id, product_id, plan_id, currency, amount, status, catalog_visible, catalog_data, created_at, updated_at
-		FROM prices
+		FROM product.prices
 		WHERE product_id = $1
 		ORDER BY currency ASC;
 	`
@@ -221,7 +221,7 @@ func (r *Repository) ListPricesByProductID(ctx context.Context, tx pgx.Tx, produ
 func (r *Repository) ListCatalogPrices(ctx context.Context, tx pgx.Tx, productID uuid.UUID, currency string) ([]domain.CatalogItem, error) {
 	q := `
 		SELECT id AS price_id, offer_id, plan_id, currency, amount, catalog_data
-		FROM prices
+		FROM product.prices
 		WHERE product_id = $1
 		  AND currency = $2
 		  AND status = 'active'

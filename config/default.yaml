@@ -27,3 +27,11 @@ redis:
   config:
     addr: "127.0.0.1:6379"
     password: ""
+
+# Upstream go-auth verification settings for admin endpoints.
+auth:
+  url: "http://go-auth:5050"
+  client_id: "624069170559-rp51efcr9bg5tgacgqoelhhmmgqouai4.apps.googleusercontent.com"
+  client_secret: "/2rH2+Ia1Vxe9lz15Wh6X2tsuU6Qy9G1UH4sWm3iVbU="
+  provider: "google"
+  timeout: 5s

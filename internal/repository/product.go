@@ -13,7 +13,7 @@ import (
 
 func (r *Repository) CreateProduct(ctx context.Context, tx pgx.Tx, p *domain.Product) error {
 	q := `
-		INSERT INTO products (id, code, name, description, status, created_at, updated_at)
+		INSERT INTO product.products (id, code, name, description, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7);
 	`
 	exec := r.getExecutor(tx)
@@ -30,7 +30,7 @@ func (r *Repository) CreateProduct(ctx context.Context, tx pgx.Tx, p *domain.Pro
 
 func (r *Repository) UpdateProduct(ctx context.Context, tx pgx.Tx, p *domain.Product) error {
 	q := `
-		UPDATE products
+		UPDATE product.products
 		SET name = $1, description = $2, status = $3, updated_at = $4
 		WHERE id = $5;
 	`
@@ -48,7 +48,7 @@ func (r *Repository) UpdateProduct(ctx context.Context, tx pgx.Tx, p *domain.Pro
 func (r *Repository) GetProductByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.Product, error) {
 	q := `
 		SELECT id, code, name, description, status, created_at, updated_at
-		FROM products
+		FROM product.products
 		WHERE id = $1;
 	`
 	exec := r.getExecutor(tx)
@@ -66,7 +66,7 @@ func (r *Repository) GetProductByID(ctx context.Context, tx pgx.Tx, id uuid.UUID
 func (r *Repository) GetProductByCode(ctx context.Context, tx pgx.Tx, code string) (*domain.Product, error) {
 	q := `
 		SELECT id, code, name, description, status, created_at, updated_at
-		FROM products
+		FROM product.products
 		WHERE code = $1;
 	`
 	exec := r.getExecutor(tx)
@@ -84,7 +84,7 @@ func (r *Repository) GetProductByCode(ctx context.Context, tx pgx.Tx, code strin
 func (r *Repository) ListProducts(ctx context.Context, tx pgx.Tx) ([]domain.Product, error) {
 	q := `
 		SELECT id, code, name, description, status, created_at, updated_at
-		FROM products
+		FROM product.products
 		ORDER BY created_at ASC;
 	`
 	exec := r.getExecutor(tx)

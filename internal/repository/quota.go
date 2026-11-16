@@ -13,7 +13,7 @@ import (
 
 func (r *Repository) CreateQuotaRule(ctx context.Context, tx pgx.Tx, q *domain.QuotaRule) error {
 	query := `
-		INSERT INTO quota_rules (id, product_id, plan_id, rule_key, limit_amount, window_duration_seconds, anchor_type, created_at, updated_at)
+		INSERT INTO product.quota_rules (id, product_id, plan_id, rule_key, limit_amount, window_duration_seconds, anchor_type, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 	`
 	exec := r.getExecutor(tx)
@@ -30,7 +30,7 @@ func (r *Repository) CreateQuotaRule(ctx context.Context, tx pgx.Tx, q *domain.Q
 
 func (r *Repository) UpdateQuotaRule(ctx context.Context, tx pgx.Tx, q *domain.QuotaRule) error {
 	query := `
-		UPDATE quota_rules
+		UPDATE product.quota_rules
 		SET limit_amount = $1, window_duration_seconds = $2, updated_at = $3
 		WHERE id = $4;
 	`
@@ -47,7 +47,7 @@ func (r *Repository) UpdateQuotaRule(ctx context.Context, tx pgx.Tx, q *domain.Q
 
 func (r *Repository) DeleteQuotaRule(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	query := `
-		DELETE FROM quota_rules
+		DELETE FROM product.quota_rules
 		WHERE id = $1;
 	`
 	exec := r.getExecutor(tx)
@@ -64,7 +64,7 @@ func (r *Repository) DeleteQuotaRule(ctx context.Context, tx pgx.Tx, id uuid.UUI
 func (r *Repository) GetQuotaRuleByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.QuotaRule, error) {
 	query := `
 		SELECT id, product_id, plan_id, rule_key, limit_amount, window_duration_seconds, anchor_type, created_at, updated_at
-		FROM quota_rules
+		FROM product.quota_rules
 		WHERE id = $1;
 	`
 	exec := r.getExecutor(tx)
@@ -85,7 +85,7 @@ func (r *Repository) GetQuotaRuleByID(ctx context.Context, tx pgx.Tx, id uuid.UU
 func (r *Repository) ListQuotaRulesByPlanID(ctx context.Context, tx pgx.Tx, planID uuid.UUID) ([]domain.QuotaRule, error) {
 	query := `
 		SELECT id, product_id, plan_id, rule_key, limit_amount, window_duration_seconds, anchor_type, created_at, updated_at
-		FROM quota_rules
+		FROM product.quota_rules
 		WHERE plan_id = $1
 		ORDER BY rule_key ASC, anchor_type ASC;
 	`

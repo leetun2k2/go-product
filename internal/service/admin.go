@@ -70,10 +70,8 @@ func (s *AdminService) UpdateProduct(ctx context.Context, id uuid.UUID, name str
 		if description != nil {
 			product.Description = description
 		}
-		statusChanged := false
 		if status != nil && status.IsValid() && *status != product.Status {
 			product.Status = *status
-			statusChanged = true
 		}
 		product.UpdatedAt = time.Now().UTC()
 
@@ -81,10 +79,8 @@ func (s *AdminService) UpdateProduct(ctx context.Context, id uuid.UUID, name str
 			return err
 		}
 
-		if statusChanged {
-			if err := s.repo.RebuildPricesForProduct(ctx, tx, product.ID); err != nil {
-				return fmt.Errorf("rebuild prices for product status change: %w", err)
-			}
+		if err := s.repo.RebuildPricesForProduct(ctx, tx, product.ID); err != nil {
+			return fmt.Errorf("rebuild prices for product change: %w", err)
 		}
 
 		updated = product
@@ -149,36 +145,44 @@ func (s *AdminService) CreatePlan(ctx context.Context, productID uuid.UUID, code
 }
 
 func (s *AdminService) UpdatePlan(ctx context.Context, id uuid.UUID, name string, description *string) (*domain.Plan, error) {
-	plan, err := s.repo.GetPlanByID(ctx, nil, id)
+	var updated *domain.Plan
+	err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
+		plan, err := s.repo.GetPlanByIDForUpdate(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+
+		// Plan entitlements and quotas can only be edited in draft status before first activation.
+		// Once activated or inactivated, entitlements and quotas are strictly immutable.
+		if plan.Status != domain.PlanStatusDraft || plan.ActivatedAt != nil {
+			return domain.ErrPlanImmutable
+		}
+
+		if strings.TrimSpace(name) != "" {
+			plan.Name = strings.TrimSpace(name)
+		}
+		if description != nil {
+			plan.Description = description
+		}
+		plan.UpdatedAt = time.Now().UTC()
+
+		if err := s.repo.UpdatePlan(ctx, tx, plan); err != nil {
+			return err
+		}
+		updated = plan
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	// Plan entitlements and quotas can only be edited in draft status.
-	// Once activated or inactivated, entitlements and quotas are strictly immutable.
-	if plan.Status != domain.PlanStatusDraft {
-		return nil, domain.ErrPlanImmutable
-	}
-
-	if strings.TrimSpace(name) != "" {
-		plan.Name = strings.TrimSpace(name)
-	}
-	if description != nil {
-		plan.Description = description
-	}
-	plan.UpdatedAt = time.Now().UTC()
-
-	if err := s.repo.UpdatePlan(ctx, nil, plan); err != nil {
-		return nil, err
-	}
-	return plan, nil
+	return updated, nil
 }
 
 // ActivatePlan validates all active offers, prices, and amounts, then updates status and read model atomically.
 func (s *AdminService) ActivatePlan(ctx context.Context, id uuid.UUID) (*domain.Plan, error) {
 	var activated *domain.Plan
 	err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
-		plan, err := s.repo.GetPlanByID(ctx, tx, id)
+		plan, err := s.repo.GetPlanByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			return err
 		}
@@ -225,9 +229,9 @@ func (s *AdminService) ActivatePlan(ctx context.Context, id uuid.UUID) (*domain.
 			}
 		}
 
-		// 3. Update plan status
-		if err := s.repo.UpdatePlanStatus(ctx, tx, plan.ID, domain.PlanStatusActive); err != nil {
-			return fmt.Errorf("update plan status: %w", err)
+		// 3. Update plan status and activation marker
+		if err := s.repo.ActivatePlan(ctx, tx, plan.ID); err != nil {
+			return fmt.Errorf("activate plan: %w", err)
 		}
 
 		// 4. Rebuild read model for all prices of this plan
@@ -235,8 +239,12 @@ func (s *AdminService) ActivatePlan(ctx context.Context, id uuid.UUID) (*domain.
 			return fmt.Errorf("rebuild prices for plan: %w", err)
 		}
 
+		now := time.Now().UTC()
 		plan.Status = domain.PlanStatusActive
-		plan.UpdatedAt = time.Now().UTC()
+		if plan.ActivatedAt == nil {
+			plan.ActivatedAt = &now
+		}
+		plan.UpdatedAt = now
 		activated = plan
 		return nil
 	})
@@ -249,7 +257,7 @@ func (s *AdminService) ActivatePlan(ctx context.Context, id uuid.UUID) (*domain.
 func (s *AdminService) DeactivatePlan(ctx context.Context, id uuid.UUID) (*domain.Plan, error) {
 	var deactivated *domain.Plan
 	err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
-		plan, err := s.repo.GetPlanByID(ctx, tx, id)
+		plan, err := s.repo.GetPlanByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			return err
 		}
@@ -258,7 +266,6 @@ func (s *AdminService) DeactivatePlan(ctx context.Context, id uuid.UUID) (*domai
 			return fmt.Errorf("update plan status: %w", err)
 		}
 
-		// Rebuilding prices will automatically update catalog_visible to false
 		if err := s.repo.RebuildPricesForPlan(ctx, tx, plan.ID); err != nil {
 			return fmt.Errorf("rebuild prices for plan: %w", err)
 		}
@@ -541,14 +548,14 @@ func (s *AdminService) CreateQuotaRule(ctx context.Context, planID uuid.UUID, ru
 
 	var created *domain.QuotaRule
 	err := s.repo.WithTx(ctx, func(tx pgx.Tx) error {
-		plan, err := s.repo.GetPlanByID(ctx, tx, planID)
+		plan, err := s.repo.GetPlanByIDForUpdate(ctx, tx, planID)
 		if err != nil {
 			return err
 		}
 
-		// Plan entitlements and quotas can only be edited in draft status.
+		// Plan entitlements and quotas can only be edited in draft status before first activation.
 		// Once activated or inactivated, entitlements and quotas are strictly immutable.
-		if plan.Status != domain.PlanStatusDraft {
+		if plan.Status != domain.PlanStatusDraft || plan.ActivatedAt != nil {
 			return domain.ErrPlanImmutable
 		}
 
@@ -599,14 +606,14 @@ func (s *AdminService) UpdateQuotaRule(ctx context.Context, id uuid.UUID, limitA
 			return err
 		}
 
-		plan, err := s.repo.GetPlanByID(ctx, tx, quota.PlanID)
+		plan, err := s.repo.GetPlanByIDForUpdate(ctx, tx, quota.PlanID)
 		if err != nil {
 			return err
 		}
 
-		// Plan entitlements and quotas can only be edited in draft status.
+		// Plan entitlements and quotas can only be edited in draft status before first activation.
 		// Once activated or inactivated, entitlements and quotas are strictly immutable.
-		if plan.Status != domain.PlanStatusDraft {
+		if plan.Status != domain.PlanStatusDraft || plan.ActivatedAt != nil {
 			return domain.ErrPlanImmutable
 		}
 
@@ -638,14 +645,14 @@ func (s *AdminService) DeleteQuotaRule(ctx context.Context, id uuid.UUID) error 
 			return err
 		}
 
-		plan, err := s.repo.GetPlanByID(ctx, tx, quota.PlanID)
+		plan, err := s.repo.GetPlanByIDForUpdate(ctx, tx, quota.PlanID)
 		if err != nil {
 			return err
 		}
 
-		// Plan entitlements and quotas can only be edited in draft status.
+		// Plan entitlements and quotas can only be edited in draft status before first activation.
 		// Once activated or inactivated, entitlements and quotas are strictly immutable.
-		if plan.Status != domain.PlanStatusDraft {
+		if plan.Status != domain.PlanStatusDraft || plan.ActivatedAt != nil {
 			return domain.ErrPlanImmutable
 		}
 

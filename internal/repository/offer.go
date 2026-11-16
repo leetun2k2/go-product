@@ -14,7 +14,7 @@ import (
 
 func (r *Repository) CreateOffer(ctx context.Context, tx pgx.Tx, o *domain.Offer) error {
 	q := `
-		INSERT INTO offers (id, product_id, plan_id, code, offer_type, billing_cycle, status, sort_order, created_at, updated_at)
+		INSERT INTO product.offers (id, product_id, plan_id, code, offer_type, billing_cycle, status, sort_order, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 	`
 	exec := r.getExecutor(tx)
@@ -31,7 +31,7 @@ func (r *Repository) CreateOffer(ctx context.Context, tx pgx.Tx, o *domain.Offer
 
 func (r *Repository) UpdateOffer(ctx context.Context, tx pgx.Tx, o *domain.Offer) error {
 	q := `
-		UPDATE offers
+		UPDATE product.offers
 		SET code = $1, sort_order = $2, updated_at = $3
 		WHERE id = $4;
 	`
@@ -48,7 +48,7 @@ func (r *Repository) UpdateOffer(ctx context.Context, tx pgx.Tx, o *domain.Offer
 
 func (r *Repository) UpdateOfferStatus(ctx context.Context, tx pgx.Tx, id uuid.UUID, status domain.OfferStatus) error {
 	q := `
-		UPDATE offers
+		UPDATE product.offers
 		SET status = $1, updated_at = $2
 		WHERE id = $3;
 	`
@@ -66,7 +66,7 @@ func (r *Repository) UpdateOfferStatus(ctx context.Context, tx pgx.Tx, id uuid.U
 func (r *Repository) GetOfferByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*domain.Offer, error) {
 	q := `
 		SELECT id, product_id, plan_id, code, offer_type, billing_cycle, status, sort_order, created_at, updated_at
-		FROM offers
+		FROM product.offers
 		WHERE id = $1;
 	`
 	exec := r.getExecutor(tx)
@@ -84,7 +84,7 @@ func (r *Repository) GetOfferByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) 
 func (r *Repository) ListOffersByPlanID(ctx context.Context, tx pgx.Tx, planID uuid.UUID) ([]domain.Offer, error) {
 	q := `
 		SELECT id, product_id, plan_id, code, offer_type, billing_cycle, status, sort_order, created_at, updated_at
-		FROM offers
+		FROM product.offers
 		WHERE plan_id = $1
 		ORDER BY sort_order ASC, created_at ASC;
 	`
@@ -109,7 +109,7 @@ func (r *Repository) ListOffersByPlanID(ctx context.Context, tx pgx.Tx, planID u
 func (r *Repository) ListActiveOffersByPlanID(ctx context.Context, tx pgx.Tx, planID uuid.UUID) ([]domain.Offer, error) {
 	q := `
 		SELECT id, product_id, plan_id, code, offer_type, billing_cycle, status, sort_order, created_at, updated_at
-		FROM offers
+		FROM product.offers
 		WHERE plan_id = $1 AND status = 'active'
 		ORDER BY sort_order ASC, created_at ASC;
 	`

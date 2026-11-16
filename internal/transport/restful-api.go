@@ -19,7 +19,11 @@ func (app *Application) RegisterRestfulApi(engine *gin.Engine) error {
 		group.GET("/usage/plans/:id/quotas", app.CatalogHandler.GetUsageQuotas)
 	}
 
+	authMiddleware := middleware.AdminAuth(app.Config.Auth, app.Logger)
+
 	registerAdmin := func(group *gin.RouterGroup) {
+		group.Use(authMiddleware)
+
 		// Products
 		group.POST("/products", app.AdminHandler.CreateProduct)
 		group.GET("/products", app.AdminHandler.ListProducts)

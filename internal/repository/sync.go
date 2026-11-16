@@ -82,7 +82,7 @@ func (r *Repository) RebuildPrice(ctx context.Context, tx pgx.Tx, priceID uuid.U
 	}
 
 	qUpdate := `
-		UPDATE prices
+		UPDATE product.prices
 		SET product_id = $1, plan_id = $2, catalog_visible = $3, catalog_data = $4, updated_at = now()
 		WHERE id = $5;
 	`
